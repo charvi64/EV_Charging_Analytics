@@ -9,7 +9,7 @@ def run_analytics():
     print("==========================================")
 
     # Load cleaned data
-    cleaned_path = "../output/cleaned_ev_data_spark"
+    cleaned_path = "/Users/charvisaig/ev_charging_analysis/output/cleaned_ev_data_spark"
     df = spark.read.parquet(cleaned_path)
 
     print(f"✅ Loaded {df.count()} rows and {len(df.columns)} columns for analysis.")

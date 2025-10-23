@@ -1,0 +1,2 @@
+✅ ETL Run completed successfully!
+Rows: 5000, Columns: 17
