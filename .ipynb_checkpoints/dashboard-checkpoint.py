@@ -14,7 +14,7 @@ st.set_page_config(page_title="EV Charging Dashboard", layout="wide")
 # ------------------------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/cleaned_ev_stations.csv")
+    return pd.read_parquet("output/cleaned_ev_data_spark")  # folder path
 
 df = load_data()
 
@@ -23,14 +23,14 @@ df = load_data()
 # ------------------------------------
 st.sidebar.title("🔌 Filter Options")
 
-charger_types = sorted(df["Charger_Type"].dropna().unique().tolist())
+charger_types = sorted(df["Charger Type"].dropna().unique().tolist())
 selected_types = st.sidebar.multiselect("Select Charger Type(s):", charger_types, default=charger_types)
 
 availability = sorted(df["Availability"].dropna().unique().tolist())
 selected_availability = st.sidebar.multiselect("Select Availability:", availability, default=availability)
 
 filtered_df = df[
-    (df["Charger_Type"].isin(selected_types)) &
+    (df["Charger Type"].isin(selected_types)) &
     (df["Availability"].isin(selected_availability))
 ]
 
@@ -45,9 +45,9 @@ st.markdown("An interactive dashboard to explore EV charging station performance
 # ------------------------------------
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Stations", len(filtered_df))
-col2.metric("Avg Cost (USD/kWh)", round(filtered_df["Cost_USD_kWh"].mean(), 2))
-col3.metric("Avg Usage (users/day)", round(filtered_df["Usage_Stats_avg_users_day"].mean(), 1))
-col4.metric("Avg Rating", round(filtered_df["Reviews_Rating"].mean(), 2))
+col2.metric("Avg Cost (USD/kWh)", round(filtered_df["Cost (USD/kWh)"].mean(), 2))
+col3.metric("Avg Usage (users/day)", round(filtered_df["Usage Stats (avg users/day)"].mean(), 1))
+col4.metric("Avg Rating", round(filtered_df["Reviews (Rating)"].mean(), 2))
 
 # ------------------------------------
 # Define Custom Colors
@@ -63,7 +63,7 @@ custom_colors = {
 # Plotly Charts (with consistent custom colors)
 # ------------------------------------
 st.subheader("🔋 Stations by Charger Type")
-charger_chart = filtered_df["Charger_Type"].value_counts().reset_index()
+charger_chart = filtered_df["Charger Type"].value_counts().reset_index()
 charger_chart.columns = ["Charger Type", "Count"]
 fig1 = px.bar(
     charger_chart,
@@ -76,12 +76,12 @@ fig1 = px.bar(
 st.plotly_chart(fig1, use_container_width=True)
 
 st.subheader("💰 Average Cost by Charger Type")
-cost_chart = filtered_df.groupby("Charger_Type")["Cost_USD_kWh"].mean().reset_index()
+cost_chart = filtered_df.groupby("Charger Type")["Cost (USD/kWh)"].mean().reset_index()
 fig2 = px.bar(
     cost_chart,
-    x="Charger_Type",
-    y="Cost_USD_kWh",
-    color="Charger_Type",
+    x="Charger Type",
+    y="Cost (USD/kWh)",
+    color="Charger Type",
     color_discrete_map=custom_colors,
     title="Average Cost per kWh by Charger Type"
 )
@@ -90,11 +90,11 @@ st.plotly_chart(fig2, use_container_width=True)
 st.subheader("⭐ Ratings vs Usage")
 fig3 = px.scatter(
     filtered_df,
-    x="Usage_Stats_avg_users_day",
-    y="Reviews_Rating",
-    color="Charger_Type",
-    size="Charging_Capacity_kW",
-    hover_name="Station_Operator",
+    x="Usage Stats (avg users/day)",
+    y="Reviews (Rating)",
+    color="Charger Type",
+    size="Charging Capacity (kW)",
+    hover_name="Station Operator",
     color_discrete_map=custom_colors,
     title="Station Ratings vs Daily Usage"
 )
@@ -113,13 +113,13 @@ if not filtered_df.empty and filtered_df["Latitude"].notna().any() and filtered_
     m = folium.Map(location=[avg_lat, avg_lon], zoom_start=5, tiles="CartoDB positron")
 
     # Define colors for charger types
-    charger_types = filtered_df["Charger_Type"].dropna().unique()
+    charger_types = filtered_df["Charger Type"].dropna().unique()
     colors = px.colors.qualitative.Dark24  # distinct colors from Plotly
     type_color_map = {ctype: colors[i % len(colors)] for i, ctype in enumerate(charger_types)}
 
     # Add markers for each station
     for _, row in filtered_df.iterrows():
-        ctype = row.get("Charger_Type", "Unknown")
+        ctype = row.get("Charger Type", "Unknown")
         folium.CircleMarker(
             location=[row["Latitude"], row["Longitude"]],
             radius=6,
@@ -128,10 +128,10 @@ if not filtered_df.empty and filtered_df["Latitude"].notna().any() and filtered_
             fill_color=type_color_map.get(ctype, "blue"),
             fill_opacity=0.7,
             popup=(
-                f"<b>Station:</b> {row.get('Station_Operator','Unknown')}<br>"
+                f"<b>Station:</b> {row.get('Station Operator','Unknown')}<br>"
                 f"<b>Charger Type:</b> {ctype}<br>"
-                f"<b>Cost:</b> {row.get('Cost_USD_kWh','N/A')} USD/kWh<br>"
-                f"<b>Usage:</b> {row.get('Usage_Stats_avg_users_day','N/A')} users/day"
+                f"<b>Cost:</b> {row.get('Cost (USD/kWh)','N/A')} USD/kWh<br>"
+                f"<b>Usage:</b> {row.get('Usage Stats (avg users/day)','N/A')} users/day"
             )
         ).add_to(m)
 
